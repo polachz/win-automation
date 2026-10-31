@@ -1201,8 +1201,8 @@ function Test-BootstrapConfig {
             $problems.Add("${label}: invalid 'autologon' '$autologonRaw' - must be one of: $($script:ValidAutologonModes -join ', ').")
         }
         elseif ($autologonMode -in @('once', 'always')) {
-            if (Get-ConfigValue $entry @('generate') $false) {
-                $problems.Add("${label}: 'autologon: $autologonMode' cannot be combined with 'generate: true' (generated passwords expire immediately and require an interactive password change at logon, which breaks Windows AutoLogon).")
+            if ((Get-ConfigValue $entry @('generate') $false) -or (Get-ConfigValue $entry @('ask') $false)) {
+                $problems.Add("${label}: 'autologon: $autologonMode' cannot be combined with 'generate: true' or 'ask: true' (generated passwords, including the -Quiet fallback for ask, expire immediately and break Windows AutoLogon).")
             }
             if (-not $localUsersResolvedForValidation.Disabled -and -not (Get-ConfigValue $entry @('disabled') $false)) {
                 $activeAutologonUsers.Add($(if ($name) { $name } else { $label }))
@@ -1617,8 +1617,9 @@ function Remove-BootstrapFileSecurely {
     if (-not (Test-Path -LiteralPath $Path)) { return }
     Assert-NotReparsePoint -Path $Path
     $item = Get-Item -LiteralPath $Path -Force
+    $fullPath = $item.FullName
     $length = [int64]$item.Length
-    $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+    $fs = [System.IO.File]::Open($fullPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
     try {
         if ($length -gt 0) {
             $bufSize = [int][Math]::Min($length, 65536)
@@ -1635,8 +1636,8 @@ function Remove-BootstrapFileSecurely {
     finally {
         $fs.Dispose()
     }
-    Remove-Item -LiteralPath $Path -Force
-    Write-Host "Securely shredded and deleted config file '$Path'." -ForegroundColor Cyan
+    Remove-Item -LiteralPath $fullPath -Force
+    Write-Host "Securely shredded and deleted config file '$fullPath'." -ForegroundColor Cyan
 }
 
 function Resolve-ConfigResource {
@@ -3191,14 +3192,14 @@ $taskName = '__TASK_NAME__'
 $maxAttempts = 5
 $deleted = $false
 for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-    $existingUser = Get-LocalUser -Name $userName -ErrorAction SilentlyContinue
+    $existingUser = Get-LocalUser -SID $sid -ErrorAction SilentlyContinue
     if ($existingUser) {
         try {
-            Remove-LocalUser -Name $userName -ErrorAction Stop
-            "$(Get-Date -Format o) - local user '$userName' deleted at startup" | Out-File -FilePath $logPath -Append
+            Remove-LocalUser -SID $sid -ErrorAction Stop
+            "$(Get-Date -Format o) - local user '$userName' (SID $sid) deleted at startup" | Out-File -FilePath $logPath -Append
             $existingUser = $null
         } catch {
-            "$(Get-Date -Format o) - attempt $attempt/$maxAttempts - Remove-LocalUser '$userName' failed: $($_.Exception.Message)" | Out-File -FilePath $logPath -Append
+            "$(Get-Date -Format o) - attempt $attempt/$maxAttempts - Remove-LocalUser '$userName' (SID $sid) failed: $($_.Exception.Message)" | Out-File -FilePath $logPath -Append
         }
     }
 

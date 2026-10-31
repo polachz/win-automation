@@ -323,7 +323,7 @@ smb_shares:
 #                               false  - leaves AutoLogon disabled
 #                             At most one active local_users entry may set
 #                             autologon to once or always; cannot be combined
-#                             with generate: true.
+#                             with generate: true or ask: true.
 #   disabled                - optional, default false - skip just this
 #                             entry, keeping it here for later (or use the
 #                             block-map form shown at the top of this file
