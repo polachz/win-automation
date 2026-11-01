@@ -3241,7 +3241,7 @@ if ($deleted) {
 
     $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`""
     $trigger = New-ScheduledTaskTrigger -AtStartup
-    $trigger.Delay = 'PT30S'
+    $trigger.Delay = 'PT5S'
     $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
     Write-Host "Scheduled full profile cleanup for '$UserName' at next reboot (log: $logPath)."
@@ -5618,7 +5618,7 @@ else {
         $userName = Get-ConfigValue $entry @('name')
         $userDisabled = Get-ConfigValue $entry @('disabled') $false
         $completeSetupOnFirstLogin = Get-ConfigValue $entry @('complete_setup_on_first_login') $true
-        $userScopeAppsForLogin = if ($appsDisabled) {
+        [array]$userScopeAppsForLogin = if ($appsDisabled) {
             @()
         }
         else {
